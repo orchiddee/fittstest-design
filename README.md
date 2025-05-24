@@ -51,3 +51,28 @@ Repeat: You can repeat steps 3-4 as many times as you like with the same or diff
 
 Download Results: Once you've collected enough data, click the Download Results as CSV button. This will download a .csv file (e.g., fitts_law_results.csv) containing all your recorded trials, which you can then open in spreadsheet software (like Excel, Google Sheets) for analysis.
 
+DATA ANALYSIS AND PLOTTING (plotting.html)
+This second HTML file provides a dedicated tool for analyzing the data collected from the Fitts's Law experiment (plotting.html). It allows you to upload the generated CSV file, visualize the relationship between Movement Time (MT) and Index of Difficulty (ID), and perform a linear regression to determine the Fitts's Law prediction equation and R-squared value.
+
+This analysis tool helps you verify Fitts's Law, which states that Movement Time (MT) is a linear function of the Index of Difficulty (ID):
+
+MT=a+b×ID
+
+Where:
+
+MT = Movement Time
+ID = Index of Difficulty
+a = Intercept (representing the inevitable delay or reaction time)
+b = Slope (representing the information processing rate or constant of proportionality)
+
+HOW TO USE THE ANALYSIS TOOLS:
+
+Get the Code: Similar to the experiment page, you can either Download the ZIP of this repository or Clone with Git.
+Open in Your Browser: Navigate to the folder and double-click the analysis.html file to open it in your web browser.
+Upload Your Data:
+Click the Choose File button and select the fitts_law_results.csv file that you downloaded from the Fitts's Law experiment page.
+Analyze Data: Click the Analyze Data button.
+The tool will process the CSV data, perform a linear regression, and display a scatter plot.
+The plot will show your individual experiment data points (Movement Time vs. Index of Difficulty) along with a calculated regression line.
+Below the chart, you'll see the calculated Prediction Equation (MT=a+b×ID) and the R-squared (R2) value. 
+The R2 value indicates how well your data fits the linear model, with values closer to 1 suggesting a strong linear relationship.
