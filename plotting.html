@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitts's Law Data Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 1000px; /* Wider for chart */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+            color: #374151;
+        }
+
+        .input-group input[type="file"] {
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            width: 100%;
+            font-size: 1rem;
+            color: #1f2937;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            background-color: #f9fafb;
+        }
+
+        .input-group input[type="file"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-primary:hover {
+            background-color: #4338ca;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        #chart-container {
+            position: relative;
+            width: 100%;
+            height: 450px; /* Fixed height for the chart */
+            margin-top: 1.5rem;
+            background-color: #f9fafb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+
+        .stats-display {
+            background-color: #f3f4f6;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            color: #374151;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .stats-display p {
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-display strong {
+            color: #1f2937;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #chart-container {
+                height: 350px; /* Adjust height for smaller screens */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-start min-h-screen p-4">
+    <div class="container flex flex-col gap-6">
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-4">Fitts's Law Data Analysis</h1>
+
+        <div class="input-group">
+            <label for="csv-file" class="text-gray-700">Upload Fitts's Law Results CSV:</label>
+            <input type="file" id="csv-file" accept=".csv" class="w-full">
+        </div>
+
+        <button id="analyze-btn" class="btn-primary w-full md:w-auto mx-auto mt-4">
+            Analyze Data
+        </button>
+
+        <div id="chart-container">
+            <canvas id="fittsLawChart"></canvas>
+        </div>
+
+        <div class="stats-display">
+            <p><strong>Prediction Equation:</strong> <span id="prediction-equation">N/A</span></p>
+            <p><strong>R-squared ($R^2$):</strong> <span id="r-squared">N/A</span></p>
+        </div>
+    </div>
+
+    <script>
+        const csvFileInput = document.getElementById('csv-file');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const fittsLawChartCanvas = document.getElementById('fittsLawChart');
+        const predictionEquationDisplay = document.getElementById('prediction-equation');
+        const rSquaredDisplay = document.getElementById('r-squared');
+
+        let chartInstance = null; // To hold the Chart.js instance
+
+        /**
+         * Parses CSV data from a string into an array of objects.
+         * Assumes the first row is the header.
+         * @param {string} csvString - The CSV data as a string.
+         * @returns {Array<Object>} An array of objects, where each object represents a row.
+         */
+        function parseCSV(csvString) {
+            const lines = csvString.trim().split('\n');
+            if (lines.length === 0) return [];
+
+            const headers = lines[0].split(',').map(header => header.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',').map(value => value.trim());
+                if (values.length === headers.length) {
+                    const row = {};
+                    headers.forEach((header, index) => {
+                        row[header] = values[index];
+                    });
+                    data.push(row);
+                }
+            }
+            return data;
+        }
+
+        /**
+         * Performs simple linear regression (least squares method).
+         * Calculates slope (b), intercept (a), and R-squared.
+         * @param {Array<Object>} data - Array of data objects, each with 'ID' and 'Movement Time (MT) (ms)' properties.
+         * @returns {Object} An object containing slope (b), intercept (a), and rSquared.
+         */
+        function linearRegression(data) {
+            const n = data.length;
+            if (n < 2) {
+                return { slope: NaN, intercept: NaN, rSquared: NaN };
+            }
+
+            let sumX = 0;
+            let sumY = 0;
+            let sumXY = 0;
+            let sumX2 = 0;
+            let sumY2 = 0;
+
+            const xValues = [];
+            const yValues = [];
+
+            data.forEach(d => {
+                const x = parseFloat(d['ID']);
+                const y = parseFloat(d['Movement Time (MT) (ms)']);
+
+                if (!isNaN(x) && !isNaN(y)) {
+                    xValues.push(x);
+                    yValues.push(y);
+
+                    sumX += x;
+                    sumY += y;
+                    sumXY += x * y;
+                    sumX2 += x * x;
+                    sumY2 += y * y;
+                }
+            });
+
+            const effectiveN = xValues.length; // Number of valid data points
+
+            if (effectiveN < 2) {
+                 return { slope: NaN, intercept: NaN, rSquared: NaN };
+            }
+
+            // Calculate slope (b)
+            const numeratorB = (effectiveN * sumXY) - (sumX * sumY);
+            const denominatorB = (effectiveN * sumX2) - (sumX * sumX);
+            const b = denominatorB === 0 ? 0 : numeratorB / denominatorB; // Handle vertical line case
+
+            // Calculate intercept (a)
+            const a = (sumY / effectiveN) - (b * sumX / effectiveN);
+
+            // Calculate R-squared
+            let ssTotal = 0; // Total sum of squares
+            let ssResidual = 0; // Residual sum of squares
+            const meanY = sumY / effectiveN;
+
+            for (let i = 0; i < effectiveN; i++) {
+                const predictedY = a + b * xValues[i];
+                ssTotal += (yValues[i] - meanY) * (yValues[i] - meanY);
+                ssResidual += (yValues[i] - predictedY) * (yValues[i] - predictedY);
+            }
+
+            const rSquared = ssTotal === 0 ? 1 : (1 - (ssResidual / ssTotal)); // If ssTotal is 0, all points are the same, R^2 is 1
+
+            return { slope: b, intercept: a, rSquared: rSquared };
+        }
+
+        /**
+         * Draws the Fitts's Law scatter plot and regression line using Chart.js.
+         * @param {Array<Object>} data - The parsed data.
+         * @param {Object} regressionStats - Object with slope, intercept, and rSquared.
+         */
+        function drawChart(data, regressionStats) {
+            const idValues = data.map(d => parseFloat(d['ID'])).filter(val => !isNaN(val));
+            const mtValues = data.map(d => parseFloat(d['Movement Time (MT) (ms)'])).filter(val => !isNaN(val));
+
+            const scatterData = idValues.map((id, index) => ({ x: id, y: mtValues[index] }));
+
+            // Generate points for the regression line
+            const minID = Math.min(...idValues);
+            const maxID = Math.max(...idValues);
+
+            const regressionLineData = [];
+            if (!isNaN(regressionStats.slope) && !isNaN(regressionStats.intercept)) {
+                regressionLineData.push({ x: minID, y: regressionStats.intercept + regressionStats.slope * minID });
+                regressionLineData.push({ x: maxID, y: regressionStats.intercept + regressionStats.slope * maxID });
+            }
+
+            if (chartInstance) {
+                chartInstance.destroy(); // Destroy existing chart instance if any
+            }
+
+            chartInstance = new Chart(fittsLawChartCanvas, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Experiment Data',
+                        data: scatterData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue points
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                    }, {
+                        label: 'Regression Line',
+                        data: regressionLineData,
+                        type: 'line', // This dataset will be a line
+                        borderColor: 'rgba(239, 68, 68, 1)', // Red line
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 0, // No points for the line
+                        tension: 0.1 // Straight line
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Index of Difficulty (ID)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Movement Time (MT) (ms)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: '#e5e7eb'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.x !== null && context.parsed.y !== null) {
+                                        label += `(ID: ${context.parsed.x.toFixed(2)}, MT: ${context.parsed.y.toFixed(2)})`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Fitts\'s Law: Movement Time vs. Index of Difficulty',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 10
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        /**
+         * Handles the analysis process when the 'Analyze Data' button is clicked.
+         */
+        analyzeBtn.addEventListener('click', () => {
+            const file = csvFileInput.files[0];
+            if (!file) {
+                showMessageBox('Please select a CSV file first.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const csvString = e.target.result;
+                    const parsedData = parseCSV(csvString);
+
+                    if (parsedData.length === 0) {
+                        showMessageBox('The CSV file is empty or could not be parsed.');
+                        return;
+                    }
+
+                    const regressionStats = linearRegression(parsedData);
+
+                    if (isNaN(regressionStats.slope) || isNaN(regressionStats.intercept)) {
+                        showMessageBox('Not enough valid data points to perform linear regression. Please ensure your CSV has at least two valid ID and MT entries.');
+                        predictionEquationDisplay.textContent = 'N/A';
+                        rSquaredDisplay.textContent = 'N/A';
+                        if (chartInstance) {
+                            chartInstance.destroy();
+                            chartInstance = null;
+                        }
+                        return;
+                    }
+
+                    // Display prediction equation
+                    predictionEquationDisplay.textContent = `MT = ${regressionStats.intercept.toFixed(2)} + ${regressionStats.slope.toFixed(2)} * ID`;
+                    // Display R-squared
+                    rSquaredDisplay.textContent = regressionStats.rSquared.toFixed(4); // Display with 4 decimal places
+
+                    drawChart(parsedData, regressionStats);
+
+                } catch (error) {
+                    console.error('Error processing CSV:', error);
+                    showMessageBox('An error occurred while processing the CSV file. Please ensure it is correctly formatted.');
+                }
+            };
+            reader.readAsText(file); // Read the file as text
+        });
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            const messageBox = document.createElement('div');
+            messageBox.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+                font-family: 'Inter', sans-serif;
+                max-width: 90%;
+                text-align: center;
+            `;
+            messageBox.innerHTML = `
+                <p>${message}</p>
+                <button style="
+                    background-color: #4f46e5;
+                    color: white;
+                    padding: 8px 15px;
+                    border-radius: 5px;
+                    border: none;
+                    cursor: pointer;
+                    font-weight: 600;
+                ">OK</button>
+            `;
+
+            document.body.appendChild(messageBox);
+
+            const okButton = messageBox.querySelector('button');
+            okButton.addEventListener('click', () => {
+                document.body.removeChild(messageBox);
+            });
+        }
+    </script>
+</body>
+</html>
