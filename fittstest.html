@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitts's Law Experiment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the Fitts's Law experiment elements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top to give space for controls */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #ffffff;
+            border-radius: 1rem; /* Rounded corners for the main container */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 900px; /* Max width for better readability */
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: block;
+            color: #374151; /* Dark gray text */
+        }
+
+        .input-group input[type="number"] {
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db; /* Light gray border */
+            border-radius: 0.5rem; /* Rounded corners for inputs */
+            width: 100%;
+            font-size: 1rem;
+            color: #1f2937; /* Darker text for inputs */
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        .input-group input[type="number"]:focus {
+            outline: none;
+            border-color: #3b82f6; /* Blue focus border */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); /* Blue focus shadow */
+        }
+
+        .btn-primary {
+            background-color: #4f46e5; /* Indigo button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-primary:hover {
+            background-color: #4338ca; /* Darker indigo on hover */
+            transform: translateY(-1px); /* Slight lift on hover */
+        }
+
+        .btn-primary:active {
+            transform: translateY(0); /* Press effect */
+        }
+
+        .btn-secondary {
+            background-color: #6b7280; /* Gray button */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn-secondary:hover {
+            background-color: #4b5563; /* Darker gray on hover */
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(0);
+        }
+
+        .experiment-area {
+            position: relative;
+            width: 100%;
+            min-height: 300px; /* Minimum height for the experiment area */
+            border: 2px dashed #9ca3af; /* Dashed border for the experiment area */
+            border-radius: 0.75rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* Hide overflow if target goes out of bounds */
+            background-color: #f9fafb; /* Lighter background for experiment area */
+        }
+
+        .start-button, .target-button {
+            position: absolute;
+            border-radius: 9999px; /* Fully rounded circle */
+            background-color: #10b981; /* Green for start */
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: 700;
+            user-select: none; /* Prevent text selection */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+        }
+
+        .start-button {
+            width: 60px; /* Fixed size for start button */
+            height: 60px;
+            background-color: #2563eb; /* Blue for start button */
+            z-index: 10; /* Ensure start button is above target if they overlap */
+        }
+
+        .target-button {
+            background-color: #ef4444; /* Red for target */
+            z-index: 5;
+            display: none; /* Hidden by default */
+        }
+
+        .target-button:hover {
+            background-color: #dc2626; /* Darker red on hover */
+            transform: translateY(-1px);
+        }
+
+        .target-button:active {
+            transform: translateY(0);
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .results-table th, .results-table td {
+            border: 1px solid #e5e7eb; /* Light gray border for table cells */
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+
+        .results-table th {
+            background-color: #f3f4f6; /* Light gray background for table header */
+            font-weight: 600;
+            color: #4b5563; /* Darker gray text */
+        }
+
+        .results-table tbody tr:nth-child(even) {
+            background-color: #f9fafb; /* Alternate row background */
+        }
+
+        .results-table tbody tr:hover {
+            background-color: #eff6ff; /* Light blue on row hover */
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 640px) {
+            .input-grid {
+                grid-template-columns: repeat(2, 1fr); /* Two columns on small screens and up */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex justify-center items-start min-h-screen p-4">
+    <div class="container flex flex-col gap-6">
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-4">Fitts's Law Experiment</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 input-grid">
+            <div class="input-group">
+                <label for="amplitude" class="text-gray-700">Amplitude (A) in pixels:</label>
+                <input type="number" id="amplitude" value="200" min="10" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+            <div class="input-group">
+                <label for="width" class="text-gray-700">Width (W) in pixels:</label>
+                <input type="number" id="width" value="50" min="10" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+            </div>
+        </div>
+
+        <div class="text-center text-lg font-semibold text-gray-700">
+            Calculated Index of Difficulty (ID): <span id="id-display" class="text-blue-600">N/A</span>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 justify-center mt-4">
+            <button id="start-experiment-btn" class="btn-primary w-full md:w-auto">
+                Prepare Experiment
+            </button>
+            <button id="download-csv-btn" class="btn-secondary w-full md:w-auto">
+                Download Results as CSV
+            </button>
+        </div>
+
+
+        <div id="experiment-area" class="experiment-area relative mt-6">
+            <div id="start-button" class="start-button w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center cursor-pointer select-none">
+                Start
+            </div>
+            <div id="target-button" class="target-button absolute rounded-full bg-red-500 text-white flex items-center justify-center cursor-pointer select-none hidden">
+                Target
+            </div>
+        </div>
+
+        <h2 class="text-2xl font-bold text-gray-800 mt-8 mb-4 text-center">Experiment Results</h2>
+        <table class="results-table w-full border-collapse">
+            <thead>
+                <tr>
+                    <th>Trial</th>
+                    <th>Amplitude (A)</th>
+                    <th>Width (W)</th>
+                    <th>ID</th>
+                    <th>Movement Time (MT) (ms)</th>
+                </tr>
+            </thead>
+            <tbody id="results-body">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const amplitudeInput = document.getElementById('amplitude');
+        const widthInput = document.getElementById('width');
+        const idDisplay = document.getElementById('id-display');
+        const startExperimentBtn = document.getElementById('start-experiment-btn'); // This button now "prepares"
+        const downloadCsvBtn = document.getElementById('download-csv-btn');
+        const experimentArea = document.getElementById('experiment-area');
+        const startButton = document.getElementById('start-button');
+        const targetButton = document.getElementById('target-button');
+        const resultsBody = document.getElementById('results-body');
+
+        // Variables to store experiment state
+        let startTime = 0;
+        let trialCount = 0;
+        let currentA = 0;
+        let currentW = 0;
+        let currentID = 0;
+        let isExperimentRunning = false;
+
+        /**
+         * Calculates the Index of Difficulty (ID) based on Amplitude (A) and Width (W)
+         * using Shannon's formulation: ID = log2(A/W + 1).
+         * @param {number} A - Amplitude (distance to target).
+         * @param {number} W - Width (size of target).
+         * @returns {number} The calculated Index of Difficulty.
+         */
+        function calculateID(A, W) {
+            if (W <= 0) return 0;
+            return Math.log2(A / W + 1);
+        }
+
+        /**
+         * Updates the displayed Index of Difficulty whenever A or W inputs change.
+         */
+        function updateIDDisplay() {
+            const A = parseFloat(amplitudeInput.value);
+            const W = parseFloat(widthInput.value);
+            if (!isNaN(A) && !isNaN(W) && W > 0) {
+                const id = calculateID(A, W);
+                idDisplay.textContent = id.toFixed(2);
+            } else {
+                idDisplay.textContent = 'Invalid Input';
+            }
+        }
+
+        /**
+         * Prepares the experiment by showing the start button and resetting state.
+         * Called when the main "Prepare Experiment" button is clicked.
+         */
+        function prepareExperiment() {
+            // Get current A and W values from inputs for validation
+            const A = parseFloat(amplitudeInput.value);
+            const W = parseFloat(widthInput.value);
+
+            // Validate inputs
+            if (isNaN(A) || isNaN(W) || A <= 0 || W <= 0) {
+                showMessageBox('Please enter valid positive numbers for Amplitude and Width.');
+                return;
+            }
+
+            // Ensure start button is visible and target is hidden
+            startButton.classList.remove('hidden');
+            targetButton.classList.add('hidden');
+
+            // Position the start button in the center of the experiment area
+            const startButtonSize = startButton.offsetWidth;
+            const experimentAreaRect = experimentArea.getBoundingClientRect();
+            const startX = (experimentAreaRect.width / 2) - (startButtonSize / 2);
+            const startY = (experimentAreaRect.height / 2) - (startButtonSize / 2);
+            startButton.style.left = `${startX}px`;
+            startButton.style.top = `${startY}px`;
+
+            // Reset flags for a new experiment series
+            isExperimentRunning = false; // No trial is active yet
+            // trialCount = 0; // Decide if you want to reset trial count here or only when startTrial is called
+        }
+
+
+        /**
+         * Initializes a new Fitts's Law trial.
+         * This function sets up the target and prepares for timing.
+         * This function is now called by clicking the 'start-button' circle.
+         */
+        function startTrial() {
+            if (isExperimentRunning) return; // Prevent multiple clicks from starting new trials
+
+            // Get current A and W values from inputs
+            currentA = parseFloat(amplitudeInput.value);
+            currentW = parseFloat(widthInput.value);
+
+            // Validate inputs (redundant with prepareExperiment, but good for direct interaction)
+            if (isNaN(currentA) || isNaN(currentW) || currentA <= 0 || currentW <= 0) {
+                showMessageBox('Please enter valid positive numbers for Amplitude and Width before starting a trial.');
+                return;
+            }
+
+            // Calculate ID for the current trial
+            currentID = calculateID(currentA, currentW);
+            idDisplay.textContent = currentID.toFixed(2); // Update ID display
+
+            trialCount++; // Increment trial count for each actual trial
+
+            // Set target button size based on Width (W)
+            targetButton.style.width = `${currentW}px`;
+            targetButton.style.height = `${currentW}px`; // Make it a circle
+
+            // Position the target button
+            const startButtonRect = startButton.getBoundingClientRect();
+            const experimentAreaRect = experimentArea.getBoundingClientRect();
+
+            // Calculate center of start button relative to experiment area
+            const startButtonCenterX = startButton.offsetLeft + (startButtonRect.width / 2);
+            const startButtonCenterY = startButton.offsetTop + (startButtonRect.height / 2);
+
+            // Calculate target position relative to experiment area, considering amplitude
+            // Let's place it to the right for simplicity, but a random angle could be used for more rigor.
+            let targetX = startButtonCenterX + currentA - (currentW / 2); // Position target 'A' pixels to the right of start button's center, adjust for target's own half-width
+            let targetY = startButtonCenterY - (currentW / 2); // Keep it on the same horizontal line, adjust for target's own half-height
+
+            // Ensure target stays within bounds of the experiment area
+            const maxTargetX = experimentAreaRect.width - currentW;
+            const minTargetX = 0;
+            const maxTargetY = experimentAreaRect.height - currentW;
+            const minTargetY = 0;
+
+            // Adjust target position if it goes out of bounds
+            if (targetX > maxTargetX) {
+                targetX = startButtonCenterX - currentA - (currentW / 2); // Place to the left if it goes off right
+            }
+            if (targetY > maxTargetY || targetY < minTargetY) {
+                // If it goes off vertically, this indicates a very large amplitude relative to area height
+                // For simplicity, we'll try to keep it centered vertically relative to the start button
+                // Or you might need more complex logic to pick a valid quadrant.
+                targetY = startButtonCenterY - (currentW / 2);
+            }
+
+            targetButton.style.left = `${targetX}px`;
+            targetButton.style.top = `${targetY}px`;
+
+            // Hide the start button and show the target button
+            startButton.classList.add('hidden');
+            targetButton.classList.remove('hidden');
+
+            // Set experiment running flag
+            isExperimentRunning = true;
+
+            // Start the timer when the start button is clicked
+            startTime = performance.now();
+        }
+
+        /**
+         * Ends the current Fitts's Law trial and records the movement time.
+         */
+        function endTrial() {
+            if (!isExperimentRunning) return;
+
+            const endTime = performance.now();
+            const movementTime = endTime - startTime; // Calculate MT in milliseconds
+
+            // Add the results to the table
+            const newRow = resultsBody.insertRow();
+            newRow.insertCell().textContent = trialCount;
+            newRow.insertCell().textContent = currentA;
+            newRow.insertCell().textContent = currentW;
+            newRow.insertCell().textContent = currentID.toFixed(2);
+            newRow.insertCell().textContent = movementTime.toFixed(2); // Display MT with 2 decimal places
+
+            // Hide the target button and show the start button for the next trial
+            targetButton.classList.add('hidden');
+            startButton.classList.remove('hidden');
+
+            // Reset experiment running flag
+            isExperimentRunning = false;
+        }
+
+        /**
+         * Downloads the experiment results as a CSV file.
+         */
+        function downloadCSV() {
+            const rows = resultsBody.querySelectorAll('tr');
+            if (rows.length === 0) {
+                showMessageBox('No data to download. Please run some trials first.');
+                return;
+            }
+
+            let csvContent = "Trial,Amplitude (A),Width (W),ID,Movement Time (MT) (ms)\n"; // CSV header
+
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                const rowData = Array.from(cells).map(cell => cell.textContent);
+                csvContent += rowData.join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'fitts_law_results.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                showMessageBox('Your browser does not support automatic CSV download. Please copy the data from the table manually.');
+            }
+        }
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            const messageBox = document.createElement('div');
+            messageBox.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 15px;
+                font-family: 'Inter', sans-serif;
+                max-width: 90%;
+                text-align: center;
+            `;
+            messageBox.innerHTML = `
+                <p>${message}</p>
+                <button style="
+                    background-color: #4f46e5;
+                    color: white;
+                    padding: 8px 15px;
+                    border-radius: 5px;
+                    border: none;
+                    cursor: pointer;
+                    font-weight: 600;
+                ">OK</button>
+            `;
+
+            document.body.appendChild(messageBox);
+
+            const okButton = messageBox.querySelector('button');
+            okButton.addEventListener('click', () => {
+                document.body.removeChild(messageBox);
+            });
+        }
+
+
+        // Event Listeners
+        amplitudeInput.addEventListener('input', updateIDDisplay);
+        widthInput.addEventListener('input', updateIDDisplay);
+
+        // **MODIFICATION HERE:**
+        // The main "Prepare Experiment" button sets up the initial state (makes start button visible).
+        startExperimentBtn.addEventListener('click', prepareExperiment);
+
+        // The 'start-button' (the circle in the center) now initiates the trial.
+        startButton.addEventListener('click', startTrial);
+
+        targetButton.addEventListener('click', endTrial);
+        downloadCsvBtn.addEventListener('click', downloadCSV);
+
+        // Initial ID display update and experiment area preparation when the page loads
+        updateIDDisplay();
+        prepareExperiment(); // Call initially to set up the start button
+    </script>
+</body>
+</html>
